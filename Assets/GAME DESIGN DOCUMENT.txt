@@ -1,0 +1,524 @@
+# TERRIS 2P — GAME DESIGN DOCUMENT (GDD)
+
+**Phiên bản:** 0.1  
+**Ngày cập nhật:** 09/11/2026  
+**Trạng thái:** Bản thiết kế nền tảng — một số luật cần được kiểm chứng qua prototype  
+**Engine:** Unity 2D, C#  
+**Nền tảng mục tiêu:** WebGL (trình duyệt)
+
+---
+
+# 1. TỔNG QUAN
+
+## 1.1. Giới thiệu
+
+Terris 2P là trò chơi xếp khối đối kháng dành cho hai người. Cả hai cùng tác động lên một Grid chung, điều khiển các khối Tetromino theo thời gian thực và cạnh tranh thông qua việc xây dựng, phá hủy hoặc gây áp lực lên cấu trúc khối.
+
+Trò chơi có hai chế độ:
+
+- **Symmetric Battle:** Hai người có vai trò và quyền chơi tương đương, tấn công lẫn nhau và cố gắng sống sót lâu hơn.
+- **Asymmetric Battle:** Hai người có vai trò khác nhau. Attacker tìm cách dọn đường qua cấu trúc khối; Defender xây dựng chướng ngại vật để ngăn đối thủ.
+
+## 1.2. Định hướng trải nghiệm
+
+- Dễ hiểu với người đã biết Tetris.
+- Nhịp độ nhanh, hai người chơi cùng lúc.
+- Một bàn chơi chung tạo cảm giác đối đầu trực tiếp.
+- Có chiều sâu chiến thuật từ vị trí đặt khối, phá hàng và tác động lên cấu trúc chung.
+- Hỗ trợ chơi cùng máy trước, sau đó mở rộng sang chơi trực tuyến.
+
+## 1.3. Nguyên tắc thiết kế
+
+1. Một Grid dùng chung cho cả hai chế độ.
+2. Hai người chơi hoạt động đồng thời, không luân phiên theo lượt.
+3. Điều khiển quen thuộc: trái, phải, xoay, rơi nhanh và thả khối.
+4. Luật riêng từng chế độ được tách khỏi hệ thống Grid cốt lõi.
+5. Thông số gameplay cần cấu hình được để cân bằng sau khi thử nghiệm.
+
+---
+
+# 2. THÔNG SỐ ĐÃ CHỐT
+
+| Hạng mục | Quyết định |
+|---|---|
+| Số người chơi | 2 |
+| Grid | Dùng chung |
+| Kích thước ban đầu | 10 cột × 20 hàng |
+| Hướng rơi | Ngược chiều nhau |
+| P1 | Phía trên, trọng lực hướng xuống |
+| P2 | Phía dưới, trọng lực hướng lên |
+| Hoạt động | Đồng thời |
+| Camera local | Chia đôi màn hình |
+| Khối | 7 Tetromino truyền thống |
+| Tấn công | Hàng tấn công ngẫu nhiên trong giai đoạn đầu |
+| Engine | Unity 2D, C# |
+| Build mục tiêu | WebGL |
+| Online multiplayer | Có trong định hướng, triển khai sau local prototype |
+
+Grid 10×20 là cấu hình ban đầu. Vì hai người chơi dùng chung một bàn, kích thước, vùng xuất hiện và cách chia không gian cần được kiểm thử để bảo đảm đủ chỗ cho cả hai.
+
+---
+
+# 3. CORE GAMEPLAY
+
+## 3.1. Grid dùng chung
+
+Grid là cấu trúc dữ liệu trung tâm của trận đấu. Mỗi ô có thể ở trạng thái:
+
+- Trống.
+- Được chiếm bởi khối đã cố định.
+- Tạm thời được chiếm bởi khối đang điều khiển của P1.
+- Tạm thời được chiếm bởi khối đang điều khiển của P2.
+
+Khối đang rơi không nên được ghi trực tiếp vào dữ liệu các ô đã cố định. Mỗi PlayerController quản lý khối đang hoạt động của mình; GridManager kiểm tra khối đó có thể chiếm vị trí dự kiến hay không.
+
+Khi khối chạm vật cản hoặc không thể di chuyển tiếp theo hướng trọng lực, khối được cố định vào Grid.
+
+## 3.2. Hệ thống Tetromino
+
+Trò chơi sử dụng bảy loại khối:
+
+- I
+- O
+- T
+- S
+- Z
+- J
+- L
+
+Mỗi loại có màu riêng để dễ phân biệt. Hệ thống cần hỗ trợ:
+
+- Sinh khối mới.
+- Di chuyển ngang.
+- Xoay 90 độ.
+- Rơi tự động theo thời gian.
+- Rơi nhanh khi người chơi giữ phím.
+- Thả khối ngay lập tức.
+- Kiểm tra va chạm với biên Grid, khối đã cố định và khối đang hoạt động của đối thủ.
+
+Bản đầu tiên có thể dùng thuật toán xoay đơn giản. Sau khi gameplay cơ bản ổn định, cân nhắc triển khai SRS (Super Rotation System) và wall-kick chuẩn hơn.
+
+## 3.3. Điều khiển mặc định
+
+### P1 — phía trên
+
+| Hành động | Phím |
+|---|---|
+| Sang trái | A |
+| Sang phải | D |
+| Xoay | W |
+| Rơi nhanh | S |
+| Thả khối | Space |
+
+### P2 — phía dưới
+
+| Hành động | Phím |
+|---|---|
+| Sang trái | Left Arrow |
+| Sang phải | Right Arrow |
+| Xoay | Up Arrow |
+| Rơi nhanh | Down Arrow |
+| Thả khối | Right Ctrl |
+
+Các phím cần cấu hình lại được trong phần cài đặt về sau. Gamepad và điều khiển cảm ứng chưa nằm trong phạm vi prototype đầu tiên.
+
+## 3.4. Va chạm và quyền chiếm ô
+
+Một vị trí hợp lệ phải:
+
+- Nằm trong phạm vi Grid.
+- Không trùng với ô đã cố định.
+- Không trùng với ô của khối đang hoạt động phía đối thủ.
+
+GridManager là nơi kiểm tra tính hợp lệ thống nhất. Không để hai PlayerController tự quyết định va chạm theo hai bộ luật khác nhau.
+
+Nếu hai hành động được xử lý trong cùng một nhịp mô phỏng và dẫn đến xung đột, hệ thống phải giải quyết theo thứ tự xác định, tránh hai khối cùng chiếm một ô. Với online multiplayer, máy chủ hoặc bộ mô phỏng có thẩm quyền cần quyết định thứ tự này.
+
+---
+
+# 4. CHẾ ĐỘ 1 — SYMMETRIC BATTLE
+
+## 4.1. Mục tiêu
+
+Hai người chơi đối đầu trực tiếp. Mỗi người vừa phải xây dựng cấu trúc khối của mình, vừa gây áp lực lên đối thủ bằng cách phá hàng và tạo hàng tấn công.
+
+## 4.2. Bố trí
+
+- P1 điều khiển khối từ phía trên, trọng lực hướng xuống.
+- P2 điều khiển khối từ phía dưới, trọng lực hướng lên.
+- Cả hai dùng chung Grid.
+- Các khối chướng ngại vật ban đầu xuất hiện ở khu vực trung tâm.
+- Khối trung tâm không tự di chuyển theo thời gian trong chế độ này.
+
+## 4.3. Phá hàng và tấn công
+
+Khi một người chơi hoàn thành một hàng:
+
+1. Hàng hoàn chỉnh được phát hiện.
+2. Hàng đó bị xóa khỏi Grid.
+3. Một hàng tấn công được tạo ở phía đối thủ.
+4. Hàng tấn công có vị trí ô trống ngẫu nhiên trong phiên bản đầu tiên.
+
+Các thông số chưa chốt:
+
+- Một hàng bị phá tạo ra một hay nhiều hàng tấn công.
+- Hàng tấn công xuất hiện tức thì hay có thời gian cảnh báo.
+- Hàng tấn công có thể bị triệt tiêu bởi đòn phản công hay không.
+- Có giới hạn số hàng tấn công chờ xử lý hay không.
+
+Đề xuất prototype: một hàng được phá tạo một hàng tấn công; hàng tấn công có một hoặc nhiều ô trống được sinh ngẫu nhiên. Cần bảo đảm luôn có ít nhất một ô trống.
+
+## 4.4. Tim và mất mạng
+
+- Mỗi người chơi có một số tim xác định khi bắt đầu trận.
+- Khi khối ở phía người chơi chạm đến biên giới hạn của người đó, người chơi mất một tim.
+- Khi mất tim, trận đấu tạm dừng để tái cân bằng cấu trúc.
+- Người đầu tiên còn 0 tim là người thua.
+
+Số tim ban đầu chưa được chốt; nên cấu hình được, ví dụ 3 tim để bắt đầu kiểm thử.
+
+## 4.5. Tái cân bằng Grid sau khi mất tim
+
+Ý tưởng đã thống nhất:
+
+- Giữ lại các khối hiện có.
+- Gom cấu trúc khối về khu vực trung tâm.
+- Cân bằng lại khoảng trống giữa hai phía.
+- Tiếp tục trận đấu sau khi hoàn tất hoạt ảnh.
+
+Cần xác định:
+
+- Cách xử lý khối đang rơi tại thời điểm mất tim.
+- Cách dịch chuyển nếu cấu trúc không thể gom về giữa mà không chồng lấn.
+- Có xóa hàng hoàn chỉnh sau khi cân bằng hay không.
+- Khối tấn công đang chờ có được giữ lại hay không.
+
+Đề xuất an toàn: tạm dừng điều khiển, xử lý khối đang hoạt động theo luật được chọn, sau đó dịch chuyển toàn bộ cấu trúc theo phép biến đổi không làm thay đổi hình dạng tương đối. Nếu phép dịch chuyển gây chồng lấn hoặc vượt biên, cần quy tắc xử lý rõ ràng thay vì tự ý xóa khối.
+
+## 4.6. Điều kiện thắng/thua
+
+- P1 thắng nếu P2 mất hết tim trước.
+- P2 thắng nếu P1 mất hết tim trước.
+- Nếu hai người cùng mất tim trong cùng một bước mô phỏng, cần luật hòa hoặc tie-break.
+
+---
+
+# 5. CHẾ ĐỘ 2 — ASYMMETRIC BATTLE
+
+## 5.1. Mục tiêu
+
+Hai người chơi có vai trò khác nhau:
+
+- **Attacker (P1, phía trên):** tìm cách dọn cấu trúc khối và mở đường.
+- **Defender (P2, phía dưới):** xây dựng cấu trúc khó xử lý để ngăn đối thủ hoàn thành mục tiêu.
+
+## 5.2. Chuyển động khối trung tâm
+
+- Khi trận đấu bắt đầu, các khối chướng ngại vật được tạo ở khu vực trung tâm.
+- Cấu trúc trung tâm tự động di chuyển dần về phía trên theo thời gian.
+- Tốc độ có thể tăng theo thời gian hoặc tiến trình trận đấu.
+- Cơ chế này chỉ hoạt động trong Asymmetric Battle.
+
+## 5.3. Attacker — P1
+
+Nhiệm vụ:
+
+- Đặt khối để hoàn thành hàng và phá hàng.
+- Dọn cấu trúc cản đường.
+- Ngăn cấu trúc khối chạm biên dưới.
+
+Điều kiện thắng đã được đề xuất: Attacker thắng khi một khối bất kỳ chạm cạnh dưới của Grid.
+
+Cần làm rõ khối nào được tính: khối đang điều khiển, khối đã cố định hay một phần cấu trúc trung tâm. Đề xuất prototype: một ô khối thuộc cấu trúc đã cố định chạm vùng biên dưới được xem là điều kiện thắng của Attacker.
+
+## 5.4. Defender — P2
+
+Nhiệm vụ:
+
+- Đặt khối để tạo cấu trúc khó xử lý.
+- Làm giảm khả năng Attacker hoàn thành hàng.
+- Có thể tự hoàn thành hàng để phá khối trung tâm; hành động này là hình phạt cho Attacker và phần thưởng cho Defender theo ý tưởng ban đầu.
+
+Cần làm rõ tác động chính xác của việc Defender phá hàng. Đề xuất prototype: khi Defender phá hàng, hàng bị xóa và tạo tác động bất lợi cho Attacker, chẳng hạn tăng tốc độ tiến lên của cấu trúc trung tâm trong một khoảng thời gian. Đây là đề xuất cân bằng, chưa phải luật đã chốt.
+
+## 5.5. Điều kiện thắng/thua
+
+- Attacker thắng khi cấu trúc khối chạm biên dưới theo định nghĩa được chọn.
+- Defender thắng khi có khối chạm biên trên.
+- Nếu hai điều kiện xảy ra cùng một bước mô phỏng, cần quy tắc ưu tiên hoặc xử lý hòa.
+
+## 5.6. Thông số cần cân bằng
+
+- Tốc độ di chuyển ban đầu của cấu trúc.
+- Mức tăng tốc theo thời gian.
+- Tác động của việc Defender phá hàng.
+- Tốc độ rơi khối của mỗi người.
+- Tần suất và hình dạng cấu trúc khởi đầu.
+- Giới hạn thời gian trận đấu, nếu có.
+
+---
+
+# 6. CAMERA VÀ GIAO DIỆN
+
+## 6.1. Local split-screen
+
+Đã chốt dùng chia đôi màn hình khi chơi cùng máy.
+
+- P1 có vùng nhìn riêng ở nửa trên.
+- P2 có vùng nhìn riêng ở nửa dưới.
+- Hai camera cùng quan sát một Grid chung.
+- Điều chỉnh orthographic size và vị trí camera để người chơi nhìn rõ vùng thao tác.
+- Có thể thêm đường biên, màu sắc hoặc chỉ báo vùng của từng người chơi.
+
+Hai camera chỉ thay đổi cách hiển thị; không tạo ra hai Grid độc lập.
+
+## 6.2. HUD dự kiến
+
+Mỗi người chơi nên có:
+
+- Tên hoặc nhãn P1/P2.
+- Điểm hoặc chỉ số tiến trình.
+- Số tim trong Symmetric Battle.
+- Vai trò Attacker/Defender trong Asymmetric Battle.
+- Khối tiếp theo (Next Piece), nếu được đưa vào gameplay.
+- Cảnh báo khi có hàng tấn công hoặc khi cấu trúc sắp chạm biên.
+
+## 6.3. Phong cách hình ảnh
+
+- Arcade hiện đại.
+- Khối màu sắc tương phản rõ.
+- Lưới dễ đọc.
+- Hiệu ứng phá hàng và tấn công ngắn, rõ ràng.
+- Ưu tiên độ rõ của gameplay hơn hiệu ứng trang trí.
+
+---
+
+# 7. KIẾN TRÚC KỸ THUẬT UNITY
+
+## 7.1. Nguyên tắc
+
+Dùng một Core Engine chung cho cả hai chế độ. Luật riêng được triển khai trong các lớp GameMode để tránh nhân đôi logic Grid và Tetromino.
+
+## 7.2. Cấu trúc thư mục đề xuất
+
+Assets/
+- Scenes/
+  - MainMenu.unity
+  - Game.unity
+  - Result.unity
+- Scripts/
+  - Core/
+    - GridManager.cs
+    - TetrominoData.cs
+    - CollisionManager.cs
+    - LineClearManager.cs
+    - GameManager.cs
+  - Players/
+    - PlayerController.cs
+    - PlayerInput.cs
+    - PlayerData.cs
+  - GameModes/
+    - IGameMode.cs
+    - SymmetricMode.cs
+    - AsymmetricMode.cs
+  - Multiplayer/
+    - LocalMultiplayer.cs
+    - NetworkManager.cs
+    - GameSynchronizer.cs
+  - UI/
+    - GameHUD.cs
+    - HealthUI.cs
+    - ResultUI.cs
+- Prefabs/
+- Sprites/
+- Materials/
+- Audio/
+
+## 7.3. Trách nhiệm các thành phần
+
+**GridManager**
+- Lưu trạng thái ô đã cố định.
+- Kiểm tra tọa độ trong Grid.
+- Kiểm tra ô có bị chiếm hay không.
+- Kiểm tra khối có thể đặt ở vị trí dự kiến.
+- Cố định khối vào Grid.
+- Phát hiện và xử lý hàng hoàn chỉnh.
+- Chuyển tọa độ Grid sang tọa độ thế giới.
+
+**TetrominoData**
+- Định nghĩa hình dạng bảy loại Tetromino.
+- Định nghĩa màu hoặc dữ liệu hiển thị.
+- Cung cấp dữ liệu ô cục bộ cho từng khối.
+
+**PlayerController**
+- Quản lý khối đang hoạt động.
+- Di chuyển và xoay khối.
+- Xử lý trọng lực theo phía người chơi.
+- Rơi nhanh và thả khối.
+- Yêu cầu GridManager kiểm tra va chạm.
+- Cố định khối khi không thể rơi tiếp.
+
+**GameMode**
+- Quy định luật của chế độ hiện tại.
+- Xử lý tấn công, mất tim, tái cân bằng hoặc chuyển động cấu trúc.
+- Xác định điều kiện thắng/thua.
+
+**Camera/UI**
+- Quản lý camera split-screen.
+- Hiển thị HUD theo người chơi và chế độ.
+
+## 7.4. Cập nhật đồng thời
+
+Hai người chơi không được tự ý ghi trực tiếp vào cùng một mảng Grid. Mọi thao tác cố định khối phải thông qua GridManager.
+
+Cần xác định thứ tự xử lý khi hai người cùng đặt khối hoặc cùng hoàn thành hàng trong một nhịp. Hệ thống nên dùng một bước mô phỏng có thứ tự xác định để tránh trạng thái không nhất quán.
+
+Với online multiplayer, nên dùng một nguồn có thẩm quyền để xác nhận trạng thái trận đấu. Không nên mặc định hai trình duyệt tự mô phỏng độc lập sẽ luôn cho kết quả giống nhau.
+
+## 7.5. WebGL và networking
+
+WebGL là nền tảng build mục tiêu. Online multiplayer cần giải pháp truyền dữ liệu tương thích với trình duyệt, thường qua WebSocket hoặc dịch vụ mạng hỗ trợ WebGL.
+
+Cần kiểm tra:
+
+- Khả năng tương thích của networking package với WebGL.
+- Input và focus trình duyệt.
+- Hiệu năng trên máy cấu hình thấp.
+- Đồng bộ trạng thái và xử lý mất kết nối.
+- Bảo vệ trạng thái trận đấu khỏi dữ liệu client không hợp lệ.
+
+---
+
+# 8. PHẠM VI PROTOTYPE V0.1
+
+## 8.1. Bao gồm
+
+- Grid dùng chung 10×20.
+- Hai người chơi điều khiển đồng thời.
+- P1 rơi xuống, P2 rơi lên.
+- Bảy loại Tetromino.
+- Di chuyển trái/phải.
+- Xoay khối.
+- Rơi tự động.
+- Rơi nhanh.
+- Thả khối.
+- Kiểm tra va chạm với biên, khối cố định và khối đang hoạt động của đối thủ.
+- Cố định khối.
+- Phát hiện và phá hàng cơ bản.
+- Camera split-screen ở mức cấu hình scene.
+
+## 8.2. Chưa bao gồm
+
+- Luật hoàn chỉnh của Symmetric Battle.
+- Luật hoàn chỉnh của Asymmetric Battle.
+- Hệ thống tim.
+- Hàng tấn công ngẫu nhiên.
+- Tái cân bằng Grid sau khi mất tim.
+- Tăng tốc cấu trúc trung tâm.
+- HUD hoàn chỉnh.
+- Animation và âm thanh.
+- Online multiplayer.
+- Matchmaking, lobby và reconnect.
+- Build WebGL đã kiểm thử trên nhiều trình duyệt.
+
+---
+
+# 9. LỘ TRÌNH PHÁT TRIỂN
+
+## Phase 1 — Core Grid
+- Hoàn thiện GridManager.
+- Xác định dữ liệu ô và tọa độ.
+- Kiểm thử cố định khối và va chạm.
+
+## Phase 2 — Two Player Controls
+- Hai PlayerController hoạt động đồng thời.
+- Trọng lực ngược chiều.
+- Xử lý xung đột khi hai người cùng thao tác.
+- Kiểm thử xoay sát biên và va chạm giữa hai khối.
+
+## Phase 3 — Board & Camera
+- Hoàn thiện split-screen.
+- Tối ưu hiển thị Grid chung.
+- Thêm HUD tối thiểu.
+
+## Phase 4 — Symmetric Battle
+- Sinh cấu trúc trung tâm.
+- Hàng tấn công ngẫu nhiên.
+- Tim và điều kiện thua.
+- Tái cân bằng Grid.
+
+## Phase 5 — Asymmetric Battle
+- Cấu trúc trung tâm tự di chuyển.
+- Luật Attacker/Defender.
+- Tác động khi Defender phá hàng.
+- Điều kiện thắng/thua.
+
+## Phase 6 — Polish
+- Hiệu ứng, âm thanh.
+- Cân bằng tốc độ và độ khó.
+- Menu và màn hình kết quả.
+- Kiểm thử gameplay.
+
+## Phase 7 — WebGL & Online
+- Build WebGL.
+- Kiểm thử trình duyệt.
+- Tích hợp networking tương thích WebGL.
+- Lobby, đồng bộ, reconnect và xử lý kết thúc trận.
+
+---
+
+# 10. RỦI RO VÀ CÂU HỎI CHƯA CHỐT
+
+Các điểm dưới đây cần quyết định bằng prototype hoặc playtest, chưa được xem là luật cuối cùng:
+
+1. Grid 10×20 có đủ không gian cho hai khối đang hoạt động cùng lúc không?
+2. Người chơi có được di chuyển khối tự do trên toàn bộ chiều ngang Grid hay mỗi người có vùng riêng?
+3. Khi hai khối chạm nhau, khối nào được ưu tiên cố định nếu hành động xảy ra cùng thời điểm?
+4. Khi phá một hàng, các khối ở hai phía dịch chuyển về hàng vừa phá như thế nào? Có thể phát sinh va chạm hoặc chồng lấn không?
+5. Symmetric: hàng tấn công xuất hiện ở phía nào, có bao nhiêu lỗ và có thời gian cảnh báo không?
+6. Symmetric: số tim ban đầu là bao nhiêu?
+7. Symmetric: khối đang rơi được xử lý thế nào khi người chơi mất tim và Grid tái cân bằng?
+8. Asymmetric: Defender phá hàng sẽ tác động chính xác thế nào đến Attacker?
+9. Asymmetric: điều kiện chạm biên được xét theo khối đang rơi hay khối đã cố định?
+10. Asymmetric: tốc độ cấu trúc trung tâm có tăng theo thời gian không?
+11. Hai chế độ có cùng tốc độ rơi và cùng quy tắc sinh khối không?
+12. Online: máy chủ có quyền quyết định toàn bộ trạng thái Grid hay dùng mô hình đồng bộ khác?
+
+---
+
+# 11. TIÊU CHÍ HOÀN THÀNH PROTOTYPE
+
+Prototype Core được xem là đạt yêu cầu khi:
+
+- Grid hiển thị đúng 10 cột × 20 hàng.
+- Hai người chơi có thể điều khiển đồng thời.
+- P1 rơi xuống và P2 rơi lên.
+- Không khối nào đi xuyên qua biên hoặc ô đã cố định.
+- Hai khối đang hoạt động không thể chiếm cùng một ô.
+- Xoay khối không làm phát sinh trạng thái sai.
+- Khối được cố định đúng vị trí khi chạm vật cản.
+- Phá hàng cập nhật trạng thái Grid chính xác.
+- Camera split-screen quan sát được bàn chơi và thao tác của cả hai.
+- Có thể chơi thử liên tục nhiều lượt mà không phát sinh lỗi dữ liệu Grid.
+
+---
+
+# 12. TÓM TẮT QUYẾT ĐỊNH
+
+Terris 2P là game xếp khối đối kháng thời gian thực cho hai người, sử dụng một Grid chung. Hai người chơi hoạt động đồng thời và điều khiển khối theo hai hướng trọng lực ngược nhau.
+
+Các quyết định đã chốt:
+
+- Unity 2D và C#.
+- WebGL là nền tảng phát hành mục tiêu.
+- Grid chung 10×20.
+- P1 phía trên rơi xuống.
+- P2 phía dưới rơi lên.
+- Local multiplayer dùng split-screen.
+- Hai chế độ Symmetric và Asymmetric.
+- Hệ thống khối Tetris truyền thống.
+- Khối tấn công ban đầu sinh ngẫu nhiên.
+
+Chiến lược phát triển là hoàn thiện Core Grid và điều khiển hai người trước, sau đó lần lượt xây dựng hai chế độ chơi, cuối cùng mới triển khai online multiplayer và tối ưu WebGL.
+
+**Đây là GDD phiên bản 0.1. Các quy tắc chưa chốt trong tài liệu cần được xác nhận qua prototype và playtest trước khi xem là đặc tả sản phẩm cuối cùng.**
