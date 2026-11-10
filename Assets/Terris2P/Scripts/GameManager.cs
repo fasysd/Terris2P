@@ -8,6 +8,26 @@ using UnityEngine.SceneManagement;
 namespace Terris2P
 {
     /// <summary>
+    /// Các chế độ chơi trong Terris 2P.
+    /// </summary>
+    public enum GameMode
+    {
+        PlayerVsPlayer,
+        PlayerVsAI
+    }
+
+    /// <summary>
+    /// Các cấp độ khó của AI.
+    /// </summary>
+    public enum AIDifficulty
+    {
+        Easy,
+        Medium,
+        Hard,
+        Master
+    }
+
+    /// <summary>
     /// Các trạng thái chính của vòng lặp trò chơi.
     /// </summary>
     public enum GameState
@@ -30,6 +50,46 @@ namespace Terris2P
 
         public GameState CurrentState { get; private set; } = GameState.MainMenu;
 
+        [Header("Chế độ chơi & Độ khó AI")]
+        public const string GameModePrefKey = "Terris2P_GameMode";
+        public const string DifficultyPrefKey = "Terris2P_AIDifficulty";
+
+        public static GameMode SelectedMode
+        {
+            get
+            {
+                string saved = PlayerPrefs.GetString(GameModePrefKey, GameMode.PlayerVsAI.ToString());
+                if (Enum.TryParse<GameMode>(saved, out var mode)) return mode;
+                return GameMode.PlayerVsAI;
+            }
+            set
+            {
+                PlayerPrefs.SetString(GameModePrefKey, value.ToString());
+                PlayerPrefs.Save();
+                if (Instance != null) Instance.currentGameMode = value;
+            }
+        }
+
+        public static AIDifficulty SelectedDifficulty
+        {
+            get
+            {
+                string saved = PlayerPrefs.GetString(DifficultyPrefKey, AIDifficulty.Medium.ToString());
+                if (Enum.TryParse<AIDifficulty>(saved, out var diff)) return diff;
+                return AIDifficulty.Medium;
+            }
+            set
+            {
+                PlayerPrefs.SetString(DifficultyPrefKey, value.ToString());
+                PlayerPrefs.Save();
+                if (Instance != null) Instance.currentAIDifficulty = value;
+            }
+        }
+
+        public GameMode currentGameMode = GameMode.PlayerVsAI;
+        public AIDifficulty currentAIDifficulty = AIDifficulty.Medium;
+        private AI.TetrisAIController aiController;
+
         [Header("Tự động bắt đầu trận")]
         public bool autoStart = true;
 
@@ -50,6 +110,9 @@ namespace Terris2P
 
         private void Start()
         {
+            currentGameMode = SelectedMode;
+            currentAIDifficulty = SelectedDifficulty;
+
             if (gridManager == null) gridManager = GridManager.Instance ?? FindFirstObjectByType<GridManager>();
 
             if (topPlayer == null)
@@ -152,11 +215,14 @@ namespace Terris2P
                 gridManager.SpawnCenterBarrier(2);
             }
 
+            ConfigureGameMode();
+
             HUD?.ShowInGameHUD();
             HUD?.UpdateHearts(PlayerSide.Top, P1Hearts);
             HUD?.UpdateHearts(PlayerSide.Bottom, P2Hearts);
             HUD?.SetRoleText(PlayerSide.Top, LocalizationManager.P1Role);
-            HUD?.SetRoleText(PlayerSide.Bottom, LocalizationManager.P2Role);
+            HUD?.SetRoleText(PlayerSide.Bottom, LocalizationManager.GetP2Role(currentGameMode, currentAIDifficulty));
+            HUD?.SetPlayerName(PlayerSide.Bottom, LocalizationManager.GetP2DisplayName(currentGameMode, currentAIDifficulty));
 
             CurrentState = GameState.Countdown;
 
@@ -174,6 +240,50 @@ namespace Terris2P
                 CurrentState = GameState.Playing;
                 topPlayer?.StartRound();
                 bottomPlayer?.StartRound();
+            }
+        }
+
+        public void SetGameMode(GameMode mode)
+        {
+            currentGameMode = mode;
+            SelectedMode = mode;
+        }
+
+        public void SetAIDifficulty(AIDifficulty diff)
+        {
+            currentAIDifficulty = diff;
+            SelectedDifficulty = diff;
+            if (aiController != null)
+                aiController.SetDifficulty(diff);
+        }
+
+        private void ConfigureGameMode()
+        {
+            if (bottomPlayer == null) return;
+
+            if (currentGameMode == GameMode.PlayerVsAI)
+            {
+                bottomPlayer.isAIControlled = true;
+                aiController = bottomPlayer.GetComponent<AI.TetrisAIController>();
+                if (aiController == null)
+                    aiController = bottomPlayer.gameObject.AddComponent<AI.TetrisAIController>();
+
+                aiController.playerController = bottomPlayer;
+                aiController.gridManager = gridManager;
+                aiController.SetDifficulty(currentAIDifficulty);
+                if (aiController.thinkingConfig == null)
+                    aiController.thinkingConfig = AI.AIThinkingConfigSO.GetDefaultInstance();
+                aiController.enabled = true;
+                aiController.ResetPlan();
+            }
+            else
+            {
+                bottomPlayer.isAIControlled = false;
+                if (aiController != null)
+                {
+                    aiController.ResetPlan();
+                    aiController.enabled = false;
+                }
             }
         }
 
@@ -286,6 +396,7 @@ namespace Terris2P
             CurrentState = GameState.RoundReset;
             topPlayer?.StopRound();
             bottomPlayer?.StopRound();
+            aiController?.ResetPlan();
 
             string bannerMsg = LocalizationManager.GetRoundResetBanner(toppedOutSide);
             HUD?.ShowBanner(bannerMsg, 1.6f);
@@ -303,6 +414,7 @@ namespace Terris2P
             CurrentState = GameState.GameOver;
             topPlayer?.StopRound();
             bottomPlayer?.StopRound();
+            aiController?.ResetPlan();
 
             SoundManager.Instance?.PlayVictory();
             HUD?.ShowGameOver(winner, reason);

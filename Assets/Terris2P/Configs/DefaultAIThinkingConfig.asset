@@ -1,0 +1,86 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e05da9db0e15a02408d75b883bba447b, type: 3}
+  m_Name: DefaultAIThinkingConfig
+  m_EditorClassIdentifier: Terris2P::Terris2P.AI.AIThinkingConfigSO
+  easyProfile:
+    profileName: "D\u1EC5 (Easy)"
+    difficulty: 0
+    searchDepth: 2
+    beamWidth: 4
+    useLookahead: 1
+    lookaheadDiscount: 0.8
+    weightLineClear: 45
+    weightDangerRow0: 60
+    weightHoles: -30
+    weightBumpiness: -8
+    weightBarrierPush: 25
+    weightP1Vulnerability: 20
+    randomNoiseRange: 6
+    thinkingDelay: 0.12
+    actionInterval: 0.09
+    allowHardDrop: 1
+    maxStuckCount: 12
+  mediumProfile:
+    profileName: "V\u1EEBa (Medium)"
+    difficulty: 1
+    searchDepth: 2
+    beamWidth: 8
+    useLookahead: 1
+    lookaheadDiscount: 0.85
+    weightLineClear: 75
+    weightDangerRow0: 95
+    weightHoles: -50
+    weightBumpiness: -14
+    weightBarrierPush: 45
+    weightP1Vulnerability: 35
+    randomNoiseRange: 0
+    thinkingDelay: 0.05
+    actionInterval: 0.055
+    allowHardDrop: 1
+    maxStuckCount: 12
+  hardProfile:
+    profileName: "Kh\xF3 (Hard)"
+    difficulty: 2
+    searchDepth: 2
+    beamWidth: 14
+    useLookahead: 1
+    lookaheadDiscount: 0.88
+    weightLineClear: 120
+    weightDangerRow0: 150
+    weightHoles: -75
+    weightBumpiness: -20
+    weightBarrierPush: 75
+    weightP1Vulnerability: 65
+    randomNoiseRange: 0
+    thinkingDelay: 0.015
+    actionInterval: 0.035
+    allowHardDrop: 1
+    maxStuckCount: 10
+  masterProfile:
+    profileName: "T\u1ED1i th\u01B0\u1EE3ng (Master)"
+    difficulty: 3
+    searchDepth: 2
+    beamWidth: 24
+    useLookahead: 1
+    lookaheadDiscount: 0.92
+    weightLineClear: 180
+    weightDangerRow0: 220
+    weightHoles: -100
+    weightBumpiness: -28
+    weightBarrierPush: 100
+    weightP1Vulnerability: 90
+    randomNoiseRange: 0
+    thinkingDelay: 0
+    actionInterval: 0.015
+    allowHardDrop: 1
+    maxStuckCount: 8

@@ -64,9 +64,13 @@ namespace Terris2P
 
         [Header("Nút & Chuỗi Menu chính")]
         public Button startGameBtn;
+        public Button modeToggleBtn;
+        public Button difficultyToggleBtn;
         public Button languageToggleBtn;
         public Text menuSubtitleText;
         public Text startGameBtnText;
+        public Text modeToggleBtnText;
+        public Text difficultyToggleBtnText;
         public Text languageToggleBtnText;
         public Text tipText;
         public Text rulesHeaderText;
@@ -105,10 +109,86 @@ namespace Terris2P
             }
             else
             {
+                EnsureMenuButtons();
                 HookSceneUIButtons();
             }
 
             UpdateAllLocalizedTexts();
+        }
+
+        public void EnsureMenuButtons()
+        {
+            if (mainMenuPanel == null) return;
+            Transform leftPanel = mainMenuPanel.transform.Find("LeftNavPanel");
+            if (leftPanel == null) return;
+
+            if (modeToggleBtn == null)
+            {
+                Transform existing = leftPanel.Find("ModeToggleBtn");
+                if (existing != null)
+                {
+                    modeToggleBtn = existing.GetComponent<Button>();
+                    modeToggleBtnText = existing.GetComponentInChildren<Text>();
+                }
+                else
+                {
+                    GameObject btnGo = CreateButton("ModeToggleBtn", leftPanel, LocalizationManager.ModePvEBtn,
+                        new Vector2(0.5f, 0.49f), new Vector2(440, 50), new Color(0.18f, 0.5f, 0.35f), () =>
+                        {
+                            var nextMode = GameManager.SelectedMode == GameMode.PlayerVsAI
+                                ? GameMode.PlayerVsPlayer
+                                : GameMode.PlayerVsAI;
+                            GameManager.SelectedMode = nextMode;
+                            UpdateAllLocalizedTexts();
+                        });
+                    modeToggleBtn = btnGo.GetComponent<Button>();
+                    modeToggleBtnText = btnGo.GetComponentInChildren<Text>();
+                }
+            }
+
+            if (difficultyToggleBtn == null)
+            {
+                Transform existing = leftPanel.Find("DifficultyToggleBtn");
+                if (existing != null)
+                {
+                    difficultyToggleBtn = existing.GetComponent<Button>();
+                    difficultyToggleBtnText = existing.GetComponentInChildren<Text>();
+                }
+                else
+                {
+                    GameObject btnGo = CreateButton("DifficultyToggleBtn", leftPanel, "",
+                        new Vector2(0.5f, 0.39f), new Vector2(440, 48), new Color(0.55f, 0.32f, 0.15f), () =>
+                        {
+                            var nextDiff = (AIDifficulty)(((int)GameManager.SelectedDifficulty + 1) % 4);
+                            GameManager.SelectedDifficulty = nextDiff;
+                            UpdateAllLocalizedTexts();
+                        });
+                    difficultyToggleBtn = btnGo.GetComponent<Button>();
+                    difficultyToggleBtnText = btnGo.GetComponentInChildren<Text>();
+                }
+            }
+
+            if (startGameBtn != null)
+            {
+                RectTransform rt = startGameBtn.GetComponent<RectTransform>();
+                rt.anchorMin = new Vector2(0.5f, 0.59f);
+                rt.anchorMax = new Vector2(0.5f, 0.59f);
+                rt.sizeDelta = new Vector2(440, 56);
+            }
+            if (languageToggleBtn != null)
+            {
+                RectTransform rt = languageToggleBtn.GetComponent<RectTransform>();
+                rt.anchorMin = new Vector2(0.5f, 0.29f);
+                rt.anchorMax = new Vector2(0.5f, 0.29f);
+                rt.sizeDelta = new Vector2(440, 46);
+            }
+            Transform tipBox = leftPanel.Find("TipBox");
+            if (tipBox != null)
+            {
+                RectTransform rt = tipBox.GetComponent<RectTransform>();
+                rt.anchorMin = new Vector2(0.06f, 0.03f);
+                rt.anchorMax = new Vector2(0.94f, 0.22f);
+            }
         }
 
         private void OnDestroy()
@@ -139,6 +219,30 @@ namespace Terris2P
                         GameManager.Instance.StartGame();
                     else
                         UnityEngine.SceneManagement.SceneManager.LoadScene("GameplayScene");
+                });
+            }
+
+            if (modeToggleBtn != null)
+            {
+                modeToggleBtn.onClick.RemoveAllListeners();
+                modeToggleBtn.onClick.AddListener(() =>
+                {
+                    var nextMode = GameManager.SelectedMode == GameMode.PlayerVsAI
+                        ? GameMode.PlayerVsPlayer
+                        : GameMode.PlayerVsAI;
+                    GameManager.SelectedMode = nextMode;
+                    UpdateAllLocalizedTexts();
+                });
+            }
+
+            if (difficultyToggleBtn != null)
+            {
+                difficultyToggleBtn.onClick.RemoveAllListeners();
+                difficultyToggleBtn.onClick.AddListener(() =>
+                {
+                    var nextDiff = (AIDifficulty)(((int)GameManager.SelectedDifficulty + 1) % 4);
+                    GameManager.SelectedDifficulty = nextDiff;
+                    UpdateAllLocalizedTexts();
                 });
             }
 
@@ -187,6 +291,23 @@ namespace Terris2P
         {
             if (menuSubtitleText != null) menuSubtitleText.text = LocalizationManager.MenuSubtitle;
             if (startGameBtnText != null) startGameBtnText.text = LocalizationManager.StartGameBtn;
+
+            GameMode curMode = GameManager.SelectedMode;
+            AIDifficulty curDiff = GameManager.SelectedDifficulty;
+
+            if (modeToggleBtnText != null)
+                modeToggleBtnText.text = curMode == GameMode.PlayerVsAI ? LocalizationManager.ModePvEBtn : LocalizationManager.ModePvPBtn;
+
+            if (difficultyToggleBtnText != null)
+            {
+                if (curMode == GameMode.PlayerVsAI)
+                    difficultyToggleBtnText.text = $"{LocalizationManager.DifficultyPrefix}{LocalizationManager.GetDifficultyName(curDiff)}";
+                else
+                    difficultyToggleBtnText.text = LocalizationManager.CurrentLanguage == GameLanguage.Vietnamese
+                        ? "--- CHẾ ĐỘ 2 NGƯỜI (PvP) ---"
+                        : "--- 2 PLAYERS (PvP) ---";
+            }
+
             if (languageToggleBtnText != null) languageToggleBtnText.text = LocalizationManager.LanguageToggleBtn;
             if (tipText != null) tipText.text = LocalizationManager.TipText;
             if (rulesHeaderText != null) rulesHeaderText.text = LocalizationManager.RulesHeader;
@@ -205,8 +326,14 @@ namespace Terris2P
 
             if (p1NameText != null) p1NameText.text = LocalizationManager.P1Name;
             if (p1RoleText != null) p1RoleText.text = LocalizationManager.P1Role;
-            if (p2NameText != null) p2NameText.text = LocalizationManager.P2Name;
-            if (p2RoleText != null) p2RoleText.text = LocalizationManager.P2Role;
+            if (p2NameText != null) p2NameText.text = LocalizationManager.GetP2DisplayName(curMode, curDiff);
+            if (p2RoleText != null) p2RoleText.text = LocalizationManager.GetP2Role(curMode, curDiff);
+        }
+
+        public void SetPlayerName(PlayerSide side, string name)
+        {
+            if (side == PlayerSide.Top && p1NameText != null) p1NameText.text = name;
+            if (side == PlayerSide.Bottom && p2NameText != null) p2NameText.text = name;
         }
 
         public void BuildCanvasUI()
@@ -287,7 +414,7 @@ namespace Terris2P
 
             // 1. Nút Bắt đầu chơi (Nổi bật, kích thước lớn)
             GameObject startBtnGo = CreateButton("StartGameBtn", leftPanel.transform, LocalizationManager.StartGameBtn,
-                new Vector2(0.5f, 0.52f), new Vector2(440, 64), new Color(0.12f, 0.55f, 0.9f), () =>
+                new Vector2(0.5f, 0.58f), new Vector2(440, 58), new Color(0.12f, 0.55f, 0.9f), () =>
                 {
                     if (GameManager.Instance != null)
                         GameManager.Instance.StartGame();
@@ -297,9 +424,43 @@ namespace Terris2P
             startGameBtn = startBtnGo.GetComponent<Button>();
             startGameBtnText = startBtnGo.GetComponentInChildren<Text>();
 
-            // 2. Nút Chọn ngôn ngữ (Tiếng Anh / Tiếng Việt)
+            // 2. Nút Chọn chế độ chơi (PvP / PvE)
+            GameMode initMode = GameManager.Instance != null ? GameManager.Instance.currentGameMode : GameMode.PlayerVsAI;
+            string initModeText = initMode == GameMode.PlayerVsAI ? LocalizationManager.ModePvEBtn : LocalizationManager.ModePvPBtn;
+            GameObject modeBtnGo = CreateButton("ModeToggleBtn", leftPanel.transform, initModeText,
+                new Vector2(0.5f, 0.48f), new Vector2(440, 50), new Color(0.18f, 0.5f, 0.35f), () =>
+                {
+                    if (GameManager.Instance != null)
+                    {
+                        var nextMode = GameManager.Instance.currentGameMode == GameMode.PlayerVsAI
+                            ? GameMode.PlayerVsPlayer
+                            : GameMode.PlayerVsAI;
+                        GameManager.Instance.SetGameMode(nextMode);
+                        UpdateAllLocalizedTexts();
+                    }
+                });
+            modeToggleBtn = modeBtnGo.GetComponent<Button>();
+            modeToggleBtnText = modeBtnGo.GetComponentInChildren<Text>();
+
+            // 3. Nút Chọn độ khó AI
+            AIDifficulty initDiff = GameManager.Instance != null ? GameManager.Instance.currentAIDifficulty : AIDifficulty.Medium;
+            string initDiffText = $"{LocalizationManager.DifficultyPrefix}{LocalizationManager.GetDifficultyName(initDiff)}";
+            GameObject diffBtnGo = CreateButton("DifficultyToggleBtn", leftPanel.transform, initDiffText,
+                new Vector2(0.5f, 0.38f), new Vector2(440, 48), new Color(0.55f, 0.32f, 0.15f), () =>
+                {
+                    if (GameManager.Instance != null)
+                    {
+                        var nextDiff = (AIDifficulty)(((int)GameManager.Instance.currentAIDifficulty + 1) % 4);
+                        GameManager.Instance.SetAIDifficulty(nextDiff);
+                        UpdateAllLocalizedTexts();
+                    }
+                });
+            difficultyToggleBtn = diffBtnGo.GetComponent<Button>();
+            difficultyToggleBtnText = diffBtnGo.GetComponentInChildren<Text>();
+
+            // 4. Nút Chọn ngôn ngữ (Tiếng Anh / Tiếng Việt)
             GameObject langBtnGo = CreateButton("LanguageToggleBtn", leftPanel.transform, LocalizationManager.LanguageToggleBtn,
-                new Vector2(0.5f, 0.38f), new Vector2(440, 58), new Color(0.28f, 0.22f, 0.48f), () =>
+                new Vector2(0.5f, 0.28f), new Vector2(440, 46), new Color(0.28f, 0.22f, 0.48f), () =>
                 {
                     LocalizationManager.ToggleLanguage();
                     UpdateAllLocalizedTexts();
@@ -307,16 +468,16 @@ namespace Terris2P
             languageToggleBtn = langBtnGo.GetComponent<Button>();
             languageToggleBtnText = langBtnGo.GetComponentInChildren<Text>();
 
-            // 4. Khung ghi chú / mẹo nhanh phía dưới cột trái
+            // 5. Khung ghi chú / mẹo nhanh phía dưới cột trái
             GameObject tipBox = CreatePanel("TipBox", leftPanel.transform, new Color(0.05f, 0.08f, 0.14f, 0.75f));
             RectTransform tbRt = tipBox.GetComponent<RectTransform>();
-            tbRt.anchorMin = new Vector2(0.06f, 0.04f);
-            tbRt.anchorMax = new Vector2(0.94f, 0.24f);
+            tbRt.anchorMin = new Vector2(0.06f, 0.02f);
+            tbRt.anchorMax = new Vector2(0.94f, 0.21f);
             tbRt.offsetMin = Vector2.zero;
             tbRt.offsetMax = Vector2.zero;
 
-            tipText = CreateText("TipText", tipBox.transform, LocalizationManager.TipText, 15, FontStyle.Normal, new Color(0.75f, 0.85f, 0.95f),
-                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(420, 140), TextAnchor.MiddleLeft);
+            tipText = CreateText("TipText", tipBox.transform, LocalizationManager.TipText, 14, FontStyle.Normal, new Color(0.75f, 0.85f, 0.95f),
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(420, 130), TextAnchor.MiddleLeft);
 
             // ========================================================
             // CỘT BÊN PHẢI: HƯỚNG DẪN LUẬT CHƠI & ĐIỀU KHIỂN

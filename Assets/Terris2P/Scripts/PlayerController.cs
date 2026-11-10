@@ -22,6 +22,17 @@ namespace Terris2P
         [Tooltip("Nếu là false, sẽ tạm ngưng sinh khối mới cho người chơi này. Khối đang rơi nếu có vẫn tiếp tục hoạt động bình thường.")]
         public bool canSpawn = true;
 
+        [Header("Điều khiển bằng AI")]
+        [Tooltip("Nếu là true, bỏ qua đầu vào bàn phím và chỉ nhận lệnh qua API công khai.")]
+        public bool isAIControlled = false;
+        private bool aiSoftDropActive = false;
+
+        public TetrominoType CurrentType => currentType;
+        public TetrominoType NextType => nextType;
+        public Vector2Int Pivot => pivot;
+        public int Rotation => rotation;
+        public bool IsActive => active;
+
         public bool CanSpawn
         {
             get => canSpawn;
@@ -235,13 +246,17 @@ namespace Terris2P
             if (!active) return;
             if (GameManager.Instance != null && GameManager.Instance.CurrentState != GameState.Playing) return;
 
-            if (inputHandler == null)
-                inputHandler = GetComponent<PlayerInputHandler>();
+            if (!isAIControlled)
+            {
+                if (inputHandler == null)
+                    inputHandler = GetComponent<PlayerInputHandler>();
 
-            inputHandler.side = side;
-            inputHandler.PollInput(Time.deltaTime);
+                inputHandler.side = side;
+                inputHandler.PollInput(Time.deltaTime);
 
-            HandleInput();
+                HandleInput();
+            }
+
             HandleGravity(Time.deltaTime);
         }
 
@@ -265,7 +280,8 @@ namespace Terris2P
 
         private void HandleGravity(float deltaTime)
         {
-            float interval = inputHandler.SoftDropActive ? fastFallInterval : normalFallInterval;
+            bool isSoftDrop = isAIControlled ? aiSoftDropActive : (inputHandler != null && inputHandler.SoftDropActive);
+            float interval = isSoftDrop ? fastFallInterval : normalFallInterval;
             fallTimer += deltaTime;
 
             // Kiểm tra xem khối có đang nằm trên bề mặt hay không
@@ -297,7 +313,30 @@ namespace Terris2P
             }
         }
 
-        private void TryMove(Vector2Int delta)
+        public bool Move(int deltaX)
+        {
+            if (!active) return false;
+            return TryMove(new Vector2Int(deltaX, 0));
+        }
+
+        public bool RotatePiece()
+        {
+            if (!active) return false;
+            return TryRotate();
+        }
+
+        public void TriggerHardDrop()
+        {
+            if (!active) return;
+            HardDrop();
+        }
+
+        public void SetSoftDrop(bool enabled)
+        {
+            aiSoftDropActive = enabled;
+        }
+
+        private bool TryMove(Vector2Int delta)
         {
             Vector2Int old = pivot;
             pivot += delta;
@@ -305,16 +344,18 @@ namespace Terris2P
             if (!Grid.CanPlace(GetWorldCells(), this))
             {
                 pivot = old;
+                return false;
             }
             else
             {
                 SoundManager.Instance?.PlayMove();
                 lockTimer = 0f; // Đặt lại bộ đếm khóa khi di chuyển thành công
                 UpdateVisuals();
+                return true;
             }
         }
 
-        private void TryRotate()
+        private bool TryRotate()
         {
             int oldRotation = rotation;
             int newRotation = (rotation + 1) % 4;
@@ -330,9 +371,10 @@ namespace Terris2P
                     SoundManager.Instance?.PlayRotate();
                     lockTimer = 0f;
                     UpdateVisuals();
-                    return;
+                    return true;
                 }
             }
+            return false;
         }
 
         private void HardDrop()

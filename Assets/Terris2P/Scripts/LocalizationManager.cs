@@ -74,6 +74,50 @@ namespace Terris2P
             ? "▶  BẮT ĐẦU CHƠI"
             : "▶  PLAY GAME";
 
+        public static string ModePvPBtn => CurrentLanguage == GameLanguage.Vietnamese
+            ? "👥  CHẾ ĐỘ: 2 NGƯỜI (PvP)"
+            : "👥  MODE: 2 PLAYERS (PvP)";
+
+        public static string ModePvEBtn => CurrentLanguage == GameLanguage.Vietnamese
+            ? "🤖  CHẾ ĐỘ: ĐẤU VỚI MÁY (PvE)"
+            : "🤖  MODE: VS AI (PvE)";
+
+        public static string DifficultyPrefix => CurrentLanguage == GameLanguage.Vietnamese
+            ? "ĐỘ KHÓ AI: "
+            : "AI DIFFICULTY: ";
+
+        public static string DifficultyEasy => CurrentLanguage == GameLanguage.Vietnamese ? "DỄ" : "EASY";
+        public static string DifficultyMedium => CurrentLanguage == GameLanguage.Vietnamese ? "VỪA" : "MEDIUM";
+        public static string DifficultyHard => CurrentLanguage == GameLanguage.Vietnamese ? "KHÓ" : "HARD";
+        public static string DifficultyMaster => CurrentLanguage == GameLanguage.Vietnamese ? "TỐI THƯỢNG" : "MASTER";
+
+        public static string GetDifficultyName(AIDifficulty difficulty)
+        {
+            switch (difficulty)
+            {
+                case AIDifficulty.Easy: return DifficultyEasy;
+                case AIDifficulty.Medium: return DifficultyMedium;
+                case AIDifficulty.Hard: return DifficultyHard;
+                default: return DifficultyMaster;
+            }
+        }
+
+        public static string GetP2DisplayName(GameMode mode, AIDifficulty difficulty)
+        {
+            if (mode == GameMode.PlayerVsPlayer) return P2Name;
+            return CurrentLanguage == GameLanguage.Vietnamese
+                ? $"MÁY (BOT) [{GetDifficultyName(difficulty)}]"
+                : $"AI (BOT) [{GetDifficultyName(difficulty)}]";
+        }
+
+        public static string GetP2Role(GameMode mode, AIDifficulty difficulty)
+        {
+            if (mode == GameMode.PlayerVsPlayer) return P2Role;
+            return CurrentLanguage == GameLanguage.Vietnamese
+                ? $"MÁY PHÒNG THỦ ({GetDifficultyName(difficulty)})"
+                : $"AI DEFENDER ({GetDifficultyName(difficulty)})";
+        }
+
         public static string LanguageToggleBtn => CurrentLanguage == GameLanguage.Vietnamese
             ? "🌐  NGÔN NGỮ: TIẾNG VIỆT (VIETNAMESE)\n[BẤM ĐỔI SANG ENGLISH]"
             : "🌐  LANGUAGE: ENGLISH\n[CLICK TO SWITCH TO TIẾNG VIỆT]";
