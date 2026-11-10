@@ -362,14 +362,14 @@ namespace Terris2P
 
         /// <summary>
         /// Quy tắc xử lý khi một bên bị trừ máu (khối chạm vào mép biên 0 hoặc 29):
+        /// - Bên bị trừ máu (loserSide) bị xóa sạch toàn bộ 100% số khối.
         /// - 2 hàng rào chắn cố định trở về chính giữa bàn cờ (hàng 14-15).
-        /// - Bên bị trừ máu bị xóa hoàn toàn 100% số khối.
-        /// - Bên sống sót bị xóa một nửa số gạch ở phía giáp rào chắn.
-        /// - Số gạch còn lại của bên sống sót được đẩy dồn sát vào rào chắn cố định.
+        /// - Bên không bị trừ máu (winnerSide) giữ nguyên vị trí các khối của mình (không di chuyển tịnh tiến).
+        ///   Các khối bị xóa là các khối nằm trên đường di chuyển của Rào chắn trung tâm đến vị trí giữa.
         /// </summary>
         public void ExecuteHeartLossReset(PlayerSide loserSide)
         {
-            // Xác định các hàng rào chắn hiện tại
+            // 1. Xác định vị trí rào chắn hiện tại trước khi reset
             int oldBarrierMinY = -1;
             int oldBarrierMaxY = -1;
             for (int y = 0; y < height; y++)
@@ -386,147 +386,41 @@ namespace Terris2P
                 oldBarrierMaxY = height / 2;
             }
 
-            PlayerSide winnerSide = loserSide == PlayerSide.Top ? PlayerSide.Bottom : PlayerSide.Top;
+            int targetBarrierMinY = (height / 2) - 1; // Hàng 14 (bảng 15x30)
+            int targetBarrierMaxY = height / 2;       // Hàng 15 (bảng 15x30)
 
-            // Thu thập các hàng gạch sống sót cần giữ lại: từng hàng một
-            List<Color[]> keptRows = new List<Color[]>();
+            // Vùng quét của rào chắn khi di chuyển về vị trí giữa:
+            // Tất cả các hàng từ sweepMinY đến sweepMaxY sẽ bị xóa sạch (bao gồm rào chắn cũ và các khối nằm trên đường đi)
+            int sweepMinY = Mathf.Min(oldBarrierMinY, targetBarrierMinY);
+            int sweepMaxY = Mathf.Max(oldBarrierMaxY, targetBarrierMaxY);
 
-            if (winnerSide == PlayerSide.Bottom)
+            if (loserSide == PlayerSide.Bottom)
             {
-                // Bên sống sót là P2 (Phía dưới), khối nằm ở y < oldBarrierMinY.
-                // Tìm tất cả các hàng có gạch của P2 theo thứ tự tăng dần (0 đến oldBarrierMinY - 1)
-                List<int> occupiedRowIndices = new List<int>();
-                for (int y = 0; y < oldBarrierMinY; y++)
+                // Bên thua là P2 (Phía dưới):
+                // - Xóa toàn bộ khối của P2 (hàng 0 đến oldBarrierMinY - 1)
+                // - Xóa các hàng trên đường đi của rào chắn đến vị trí giữa (oldBarrierMinY đến sweepMaxY)
+                // -> Tổng cộng xóa từ hàng 0 đến hàng sweepMaxY.
+                // Bên thắng (P1) giữ nguyên vị trí các khối từ hàng sweepMaxY + 1 trở lên!
+                for (int y = 0; y <= sweepMaxY; y++)
                 {
-                    bool hasBlock = false;
-                    for (int x = 0; x < width; x++)
-                    {
-                        if (lockedCells[x, y] != null && !isIndestructible[x, y])
-                        {
-                            hasBlock = true;
-                            break;
-                        }
-                    }
-                    if (hasBlock) occupiedRowIndices.Add(y);
-                }
-
-                int totalRows = occupiedRowIndices.Count;
-                int deleteCount = Mathf.CeilToInt(totalRows / 2f);
-                int keepCount = totalRows - deleteCount;
-
-                // Các hàng giữ lại là những hàng xa rào chắn nhất (keepCount hàng đầu tiên)
-                for (int i = 0; i < keepCount; i++)
-                {
-                    int rowY = occupiedRowIndices[i];
-                    Color[] rowColors = new Color[width];
-                    for (int x = 0; x < width; x++)
-                    {
-                        if (lockedCells[x, rowY] != null)
-                        {
-                            SpriteRenderer sr = lockedCells[x, rowY].GetComponent<SpriteRenderer>();
-                            rowColors[x] = sr != null ? sr.color : Color.white;
-                        }
-                        else
-                        {
-                            rowColors[x] = Color.clear;
-                        }
-                    }
-                    keptRows.Add(rowColors);
+                    RemoveRow(y);
                 }
             }
             else
             {
-                // Bên sống sót là P1 (Phía trên), khối nằm ở y > oldBarrierMaxY.
-                // Tìm tất cả các hàng có gạch của P1 theo thứ tự tăng dần (oldBarrierMaxY + 1 đến height - 1)
-                List<int> occupiedRowIndices = new List<int>();
-                for (int y = oldBarrierMaxY + 1; y < height; y++)
+                // Bên thua là P1 (Phía trên):
+                // - Xóa toàn bộ khối của P1 (hàng oldBarrierMaxY + 1 đến height - 1)
+                // - Xóa các hàng trên đường đi của rào chắn đến vị trí giữa (sweepMinY đến oldBarrierMaxY)
+                // -> Tổng cộng xóa từ hàng sweepMinY đến height - 1.
+                // Bên thắng (P2) giữ nguyên vị trí các khối từ hàng sweepMinY - 1 trở xuống!
+                for (int y = sweepMinY; y < height; y++)
                 {
-                    bool hasBlock = false;
-                    for (int x = 0; x < width; x++)
-                    {
-                        if (lockedCells[x, y] != null && !isIndestructible[x, y])
-                        {
-                            hasBlock = true;
-                            break;
-                        }
-                    }
-                    if (hasBlock) occupiedRowIndices.Add(y);
-                }
-
-                int totalRows = occupiedRowIndices.Count;
-                int deleteCount = Mathf.CeilToInt(totalRows / 2f);
-                int keepCount = totalRows - deleteCount;
-
-                // Các hàng giữ lại là những hàng xa rào chắn nhất (keepCount hàng cuối cùng)
-                for (int i = deleteCount; i < totalRows; i++)
-                {
-                    int rowY = occupiedRowIndices[i];
-                    Color[] rowColors = new Color[width];
-                    for (int x = 0; x < width; x++)
-                    {
-                        if (lockedCells[x, rowY] != null)
-                        {
-                            SpriteRenderer sr = lockedCells[x, rowY].GetComponent<SpriteRenderer>();
-                            rowColors[x] = sr != null ? sr.color : Color.white;
-                        }
-                        else
-                        {
-                            rowColors[x] = Color.clear;
-                        }
-                    }
-                    keptRows.Add(rowColors);
+                    RemoveRow(y);
                 }
             }
 
-            // Xóa sạch toàn bộ bàn cờ
-            ClearBoard();
-
-            // Tái tạo lại 2 hàng rào chắn cố định ở chính giữa (hàng 14-15 trên bảng 15x30)
-            int targetBarrierMinY = (height / 2) - 1;
-            int targetBarrierMaxY = height / 2;
+            // 2. Tái tạo lại 2 hàng rào chắn cố định ở chính giữa (hàng 14-15 trên bảng 15x30)
             SpawnCenterBarrier(2);
-
-            // Đặt các hàng sống sót sát ngay cạnh hàng rào chắn cố định
-            if (winnerSide == PlayerSide.Bottom)
-            {
-                // Các khối của P2 được đặt bắt đầu từ hàng 13 trở xuống
-                for (int i = 0; i < keptRows.Count; i++)
-                {
-                    int targetY = targetBarrierMinY - 1 - (keptRows.Count - 1 - i);
-                    if (targetY < 0) continue;
-
-                    Color[] rowColors = keptRows[i];
-                    for (int x = 0; x < width; x++)
-                    {
-                        if (rowColors[x] != Color.clear)
-                        {
-                            GameObject block = CreateCellVisual("LockedCell", new Vector2Int(x, targetY), rowColors[x]);
-                            block.transform.SetParent(cellRoot, true);
-                            lockedCells[x, targetY] = block.transform;
-                        }
-                    }
-                }
-            }
-            else
-            {
-                // Các khối của P1 được đặt bắt đầu từ hàng 16 trở lên
-                for (int i = 0; i < keptRows.Count; i++)
-                {
-                    int targetY = targetBarrierMaxY + 1 + i;
-                    if (targetY >= height) continue;
-
-                    Color[] rowColors = keptRows[i];
-                    for (int x = 0; x < width; x++)
-                    {
-                        if (rowColors[x] != Color.clear)
-                        {
-                            GameObject block = CreateCellVisual("LockedCell", new Vector2Int(x, targetY), rowColors[x]);
-                            block.transform.SetParent(cellRoot, true);
-                            lockedCells[x, targetY] = block.transform;
-                        }
-                    }
-                }
-            }
         }
 
         public void ClearBoard()

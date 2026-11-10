@@ -142,16 +142,18 @@ namespace Terris2P
               "<b>3. Đẩy khối khi phá hàng:</b> Khi một bên phá hàng, toàn bộ cấu trúc khối (kèm rào chắn) sẽ <b>bị đẩy dồn về phía đối thủ</b> để thu hẹp không gian đặt khối của họ!\n\n" +
               "<b>4. Mất tim & Tái cân bằng:</b>\n" +
               "   • Khi khối gạch chạm mép biên (P1 chạm hàng 29, P2 chạm hàng 0) ➔ <b>Bị trừ 1 tim!</b>\n" +
-              "   • Rào chắn trở về giữa bàn (hàng 14-15). Bên mất máu bị <b>xóa sạch 100% gạch</b>.\n" +
-              "   • Bên sống sót xóa 1/2 số gạch ở phía rào chắn, phần còn lại được dồn sát vào rào chắn.\n\n" +
+              "   • Bên bị trừ máu bị <b>xóa sạch 100% số khối</b>.\n" +
+              "   • Rào chắn trung tâm trở về vị trí chính giữa (hàng 14-15).\n" +
+              "   • Bên không bị trừ máu <b>giữ nguyên vị trí</b> các khối của mình (chỉ xóa các khối nằm trên đường đi của rào chắn).\n\n" +
               "<b>5. Chiến thắng:</b> Mỗi bên có 3 tim. Bên nào hết tim trước sẽ thua cuộc!"
             : "<b>1. Shared 15x30 Board:</b> Two players battle concurrently. P1 drops from top (-Y), P2 drops from bottom (+Y).\n\n" +
               "<b>2. Center Barrier:</b> 2 indestructible center rows (rows 14-15) always stay filled and prevent crossing.\n\n" +
               "<b>3. Push on Line Clear:</b> When a player clears lines, all blocks (with the barrier) are <b>pushed toward the opponent</b> to shrink their placement space!\n\n" +
               "<b>4. Heart Loss & Rebalance:</b>\n" +
               "   • When blocks touch edge (P1 touches row 29, P2 touches row 0) ➔ <b>Lose 1 Heart!</b>\n" +
-              "   • Barrier resets to center (rows 14-15). Loser's blocks are <b>100% wiped</b>.\n" +
-              "   • Survivor's blocks near barrier are halved (1/2 cleared), remaining blocks pulled tight against barrier.\n\n" +
+              "   • The player who lost health has their blocks <b>100% wiped</b>.\n" +
+              "   • Center barrier returns to the middle (rows 14-15).\n" +
+              "   • The non-losing player <b>keeps their blocks at original positions</b> (only blocks in the path of the barrier are cleared).\n\n" +
               "<b>5. Victory:</b> Each player has 3 hearts. First to lose all hearts loses the match!";
 
         public static string ControlsHeader => CurrentLanguage == GameLanguage.Vietnamese

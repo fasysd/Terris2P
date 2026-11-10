@@ -70,6 +70,11 @@ flowchart TD
     - Khi P2 xóa một hàng: Toàn bộ các hàng phía trên hàng bị xóa (bao gồm cả 2 hàng rào chắn cố định) sẽ bị đẩy **LÊN** 1 hàng về phía P1.
     - Các hàng phía dưới hàng bị xóa dời lên 2 hàng lấp vào khoảng trống.
     - Bất kỳ khối nào bị đẩy vượt qua hàng 29 sẽ bị hủy hoàn toàn.
+- **Quy tắc Mất tim & Tái cân bằng vòng chơi (`ExecuteHeartLossReset`)**:
+  - Khi một bên chạm mép chết (P1 chạm hàng 29 hoặc P2 chạm hàng 0):
+    - Bên bị trừ máu bị **xóa sạch toàn bộ 100% số khối**.
+    - 2 hàng rào chắn cố định trở về chính giữa bàn cờ (hàng 14-15).
+    - Bên không bị trừ máu **giữ nguyên vị trí các khối của mình** (không di chuyển tịnh tiến). Các khối bị xóa của bên này chỉ là những khối nằm trên đường di chuyển của Rào chắn trung tâm đến vị trí giữa (`sweepMinY` đến `sweepMaxY`).
 
 ---
 

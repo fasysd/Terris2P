@@ -193,25 +193,29 @@ namespace Terris2P.Tests
         }
 
         [Test]
-        public void GridManager_HeartLossReset_WipesLoserAndKeepsHalfSurvivorAdjacentToBarrier()
+        public void GridManager_HeartLossReset_P2Loses_WipesP2AndKeepsP1AtOriginalPositionsExceptBarrierPath()
         {
-            GameObject go = new GameObject("TestGrid_HeartReset");
+            GameObject go = new GameObject("TestGrid_HeartReset_P2Loses");
             GridManager grid = go.AddComponent<GridManager>();
             grid.InitializeGrid(15, 30);
 
             grid.SpawnCenterBarrier(2); // Hàng 14 và 15
 
-            // P1 có 4 hàng gạch (chừa lại 1 ô x=14 để không bị xóa hàng ngay lúc khóa): hàng 16, 17, 18, 19
-            for (int y = 16; y <= 19; y++)
-            {
-                for (int x = 0; x < grid.width - 1; x++)
-                {
-                    grid.LockCells(new[] { new Vector2Int(x, y) }, Color.cyan, PlayerSide.Top);
-                }
-            }
+            // P1 xóa 2 hàng để đẩy rào chắn XUỐNG 2 hàng: từ 14-15 thành 12-13
+            Vector2Int[] row1 = new Vector2Int[grid.width];
+            for (int x = 0; x < grid.width; x++) row1[x] = new Vector2Int(x, 20);
+            grid.LockCells(row1, Color.cyan, PlayerSide.Top);
 
-            // P2 có 2 hàng gạch (chừa ô x=14): hàng 12, 13
-            for (int y = 12; y <= 13; y++)
+            Vector2Int[] row2 = new Vector2Int[grid.width];
+            for (int x = 0; x < grid.width; x++) row2[x] = new Vector2Int(x, 20);
+            grid.LockCells(row2, Color.cyan, PlayerSide.Top);
+
+            // Xác minh rào chắn hiện tại ở hàng 12 và 13
+            Assert.IsTrue(grid.IsIndestructible(new Vector2Int(0, 12)), "Rào chắn phải ở hàng 12.");
+            Assert.IsTrue(grid.IsIndestructible(new Vector2Int(0, 13)), "Rào chắn phải ở hàng 13.");
+
+            // P2 (Bên thua) có khối tại hàng 4 và 5
+            for (int y = 4; y <= 5; y++)
             {
                 for (int x = 0; x < grid.width - 1; x++)
                 {
@@ -219,45 +223,112 @@ namespace Terris2P.Tests
                 }
             }
 
-            // Giả lập P2 bị mất máu (khối chạm đáy biên dưới)
+            // P1 (Bên thắng):
+            // - Khối tại hàng 14 (nằm trên đường rào chắn quét từ 12-13 lên 14-15) -> SẼ BỊ XÓA
+            // - Khối tại hàng 24 (nằm ngoài đường quét) -> GIỮ NGUYÊN VỊ TRÍ
+            for (int x = 0; x < grid.width - 1; x++)
+            {
+                grid.LockCells(new[] { new Vector2Int(x, 14) }, Color.cyan, PlayerSide.Top);
+                grid.LockCells(new[] { new Vector2Int(x, 24) }, Color.cyan, PlayerSide.Top);
+            }
+
+            // P2 bị mất máu
             grid.ExecuteHeartLossReset(PlayerSide.Bottom);
 
-            // 1. Rào chắn phải được đưa về vị trí chính giữa (hàng 14 và 15)
+            // 1. Rào chắn trở về vị trí chính giữa: hàng 14 và 15
             for (int y = 14; y <= 15; y++)
             {
                 for (int x = 0; x < grid.width; x++)
                 {
-                    Assert.IsTrue(grid.IsIndestructible(new Vector2Int(x, y)), $"Rào chắn trung tâm tại ({x}, {y}) phải còn nguyên.");
+                    Assert.IsTrue(grid.IsIndestructible(new Vector2Int(x, y)), $"Rào chắn phải ở hàng {y}.");
                 }
             }
 
-            // 2. Phần sân của bên thua (P2) (hàng 0 đến 13) phải bị xóa sạch hoàn toàn (0 khối)!
+            // 2. Bên bị trừ máu (P2): BỊ XÓA SẠCH TOÀN BỘ 100% SỐ KHỐI (hàng 0 đến 13 trống)
             for (int y = 0; y <= 13; y++)
             {
                 for (int x = 0; x < grid.width; x++)
                 {
-                    Assert.IsFalse(grid.IsLocked(new Vector2Int(x, y)), $"Ô ({x}, {y}) của P2 phải bị xóa sạch.");
+                    Assert.IsFalse(grid.IsLocked(new Vector2Int(x, y)), $"Phần sân P2 tại hàng {y} phải bị xóa sạch.");
                 }
             }
 
-            // 3. Bên thắng (P1) có 4 hàng (16, 17, 18, 19).
-            // Nửa số hàng giáp rào chắn (2 hàng: 16 và 17) bị xóa!
-            // 2 hàng còn lại (18 và 19) được đẩy dồn sát vào rào chắn cố định (nay ở hàng 16 và 17)!
-            for (int y = 16; y <= 17; y++)
+            // 3. Bên không bị trừ máu (P1):
+            // - Khối tại hàng 24 GIỮ NGUYÊN VỊ TRÍ (không bị tịnh tiến)
+            for (int x = 0; x < grid.width - 1; x++)
+            {
+                Assert.IsTrue(grid.IsLocked(new Vector2Int(x, 24)), "Khối của P1 tại hàng 24 phải giữ nguyên vị trí.");
+            }
+
+            Object.DestroyImmediate(go);
+        }
+
+        [Test]
+        public void GridManager_HeartLossReset_P1Loses_WipesP1AndKeepsP2AtOriginalPositionsExceptBarrierPath()
+        {
+            GameObject go = new GameObject("TestGrid_HeartReset_P1Loses");
+            GridManager grid = go.AddComponent<GridManager>();
+            grid.InitializeGrid(15, 30);
+
+            grid.SpawnCenterBarrier(2); // Hàng 14 và 15
+
+            // P2 xóa 2 hàng để đẩy rào chắn LÊN 2 hàng: từ 14-15 thành 16-17
+            Vector2Int[] row1 = new Vector2Int[grid.width];
+            for (int x = 0; x < grid.width; x++) row1[x] = new Vector2Int(x, 8);
+            grid.LockCells(row1, Color.yellow, PlayerSide.Bottom);
+
+            Vector2Int[] row2 = new Vector2Int[grid.width];
+            for (int x = 0; x < grid.width; x++) row2[x] = new Vector2Int(x, 8);
+            grid.LockCells(row2, Color.yellow, PlayerSide.Bottom);
+
+            // Xác minh rào chắn hiện tại ở hàng 16 và 17
+            Assert.IsTrue(grid.IsIndestructible(new Vector2Int(0, 16)), "Rào chắn phải ở hàng 16.");
+            Assert.IsTrue(grid.IsIndestructible(new Vector2Int(0, 17)), "Rào chắn phải ở hàng 17.");
+
+            // P1 (Bên thua) có khối tại hàng 22 và 23
+            for (int y = 22; y <= 23; y++)
             {
                 for (int x = 0; x < grid.width - 1; x++)
                 {
-                    Assert.IsTrue(grid.IsLocked(new Vector2Int(x, y)), $"Hàng sống sót phải được dồn về hàng {y}.");
+                    grid.LockCells(new[] { new Vector2Int(x, y) }, Color.cyan, PlayerSide.Top);
                 }
             }
 
-            // Các hàng từ 18 đến 29 phải hoàn toàn trống!
-            for (int y = 18; y < grid.height; y++)
+            // P2 (Bên thắng):
+            // - Khối tại hàng 15 (nằm trên đường rào chắn quét từ 16-17 xuống 14-15) -> SẼ BỊ XÓA (thành rào chắn)
+            // - Khối tại hàng 5 (nằm ngoài đường quét) -> GIỮ NGUYÊN VỊ TRÍ
+            for (int x = 0; x < grid.width - 1; x++)
+            {
+                grid.LockCells(new[] { new Vector2Int(x, 15) }, Color.yellow, PlayerSide.Bottom);
+                grid.LockCells(new[] { new Vector2Int(x, 5) }, Color.yellow, PlayerSide.Bottom);
+            }
+
+            // P1 bị mất máu
+            grid.ExecuteHeartLossReset(PlayerSide.Top);
+
+            // 1. Rào chắn hồi về vị trí chính giữa: hàng 14 và 15
+            for (int y = 14; y <= 15; y++)
             {
                 for (int x = 0; x < grid.width; x++)
                 {
-                    Assert.IsFalse(grid.IsLocked(new Vector2Int(x, y)), $"Hàng {y} phải trống.");
+                    Assert.IsTrue(grid.IsIndestructible(new Vector2Int(x, y)), $"Rào chắn phải ở hàng {y}.");
                 }
+            }
+
+            // 2. Bên bị trừ máu (P1): BỊ XÓA SẠCH TOÀN BỘ 100% SỐ KHỐI (hàng 16 đến 29 trống)
+            for (int y = 16; y < grid.height; y++)
+            {
+                for (int x = 0; x < grid.width; x++)
+                {
+                    Assert.IsFalse(grid.IsLocked(new Vector2Int(x, y)), $"Phần sân P1 tại hàng {y} phải bị xóa sạch.");
+                }
+            }
+
+            // 3. Bên không bị trừ máu (P2):
+            // - Khối tại hàng 5 GIỮ NGUYÊN VỊ TRÍ (không bị tịnh tiến)
+            for (int x = 0; x < grid.width - 1; x++)
+            {
+                Assert.IsTrue(grid.IsLocked(new Vector2Int(x, 5)), "Khối của P2 tại hàng 5 phải giữ nguyên vị trí.");
             }
 
             Object.DestroyImmediate(go);
